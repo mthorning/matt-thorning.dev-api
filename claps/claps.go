@@ -26,8 +26,12 @@ func init() {
 	}
 }
 
-func sendError(w http.ResponseWriter, m string, e error) {
-	http.Error(w, fmt.Sprintf(m, e), http.StatusBadRequest)
+func sendError(err error, w http.ResponseWriter, m string) bool {
+	if err != nil {
+		http.Error(w, fmt.Sprintf(m, err), http.StatusBadRequest)
+		return true
+	}
+	return false
 }
 
 func getClaps(firebasePath string) ([]byte, error) {
@@ -57,8 +61,7 @@ func updateFirebase(newClaps []byte, method string) (*http.Response, error) {
 func relayResponse(res *http.Response, w http.ResponseWriter) {
 	data, err := ioutil.ReadAll(res.Body)
 	defer res.Body.Close()
-	if err != nil {
-		sendError(w, "Error relaying Firebase response", err)
+	if sendError(err, w, "Error relaying Firebase response") {
 		return
 	}
 
@@ -93,8 +96,7 @@ func getClapsFromRequest(r *http.Request) (int, error) {
 
 func getAllClaps(w http.ResponseWriter, r *http.Request) {
 	claps, err := getClaps(fmt.Sprintf("%s/claps", environment))
-	if err != nil {
-		sendError(w, "Error getting claps: %v", err)
+	if sendError(err, w, "Error getting claps: %v") {
 		return
 	}
 
@@ -106,14 +108,12 @@ func getAllClaps(w http.ResponseWriter, r *http.Request) {
 // Will delete once move is complete
 func syncClaps(w http.ResponseWriter, r *http.Request) {
 	claps, err := getClaps("claps")
-	if err != nil {
-		sendError(w, "Error getting claps: %v", err)
+	if sendError(err, w, "Error getting claps: %v") {
 		return
 	}
 
 	response, err := updateFirebase(claps, http.MethodPut)
-	if err != nil {
-		sendError(w, "Error updating Firebase: %v", err)
+	if sendError(err, w, "Error updating Firebase: %v") {
 		return
 	}
 	relayResponse(response, w)
@@ -124,14 +124,12 @@ func addClaps(w http.ResponseWriter, r *http.Request) {
 	article := mux.Vars(r)["article"]
 
 	currentCount, err := getCurrentClapsCount(article)
-	if err != nil {
-		sendError(w, "Error getting current claps", err)
+	if sendError(err, w, "Error getting current claps") {
 		return
 	}
 
 	clapsToAdd, err := getClapsFromRequest(r)
-	if err != nil {
-		sendError(w, "Error getting claps from request", err)
+	if sendError(err, w, "Error getting claps from request") {
 		return
 	}
 
@@ -140,14 +138,12 @@ func addClaps(w http.ResponseWriter, r *http.Request) {
 	}
 	newClaps := map[string]int{article: currentCount + clapsToAdd}
 	body, err := json.Marshal(newClaps)
-	if err != nil {
-		sendError(w, "Error marshalling data", err)
+	if sendError(err, w, "Error marshalling data") {
 		return
 	}
 
 	response, err := updateFirebase([]byte(body), http.MethodPatch)
-	if err != nil {
-		sendError(w, "Error updating Firebase", err)
+	if sendError(err, w, "Error updating Firebase") {
 		return
 	}
 
