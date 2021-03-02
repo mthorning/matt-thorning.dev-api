@@ -1,4 +1,4 @@
-package api
+package claps
 
 import (
 	"bytes"
@@ -13,17 +13,24 @@ import (
 )
 
 const firebaseDomain = "firebaseio.com"
+const maxClaps = 20
 
-func getEnvironment() string {
-	var environment = "development"
+var (
+	environment string = "development"
+	projectId   string = os.Getenv("FIREBASE_PROJECT_ID")
+)
+
+func init() {
 	if os.Getenv("ENVIRONMENT") == "production" {
 		environment = "production"
 	}
-	return environment
+}
+
+func sendError(w http.ResponseWriter, m string, e error) {
+	http.Error(w, fmt.Sprintf(m, e), http.StatusBadRequest)
 }
 
 func getClaps(firebasePath string) ([]byte, error) {
-	var projectId = os.Getenv("FIREBASE_PROJECT_ID")
 	response, err := http.Get(fmt.Sprintf("https://%s.%s/%s.json", projectId, firebaseDomain, firebasePath))
 	if err != nil {
 		return nil, err
@@ -35,8 +42,6 @@ func getClaps(firebasePath string) ([]byte, error) {
 }
 
 func updateFirebase(newClaps []byte, method string) (*http.Response, error) {
-	environment := getEnvironment()
-	projectId := os.Getenv("FIREBASE_PROJECT_ID")
 	client := &http.Client{}
 
 	req, err := http.NewRequest(method, fmt.Sprintf("https://%s.%s/%s/claps.json", projectId, firebaseDomain, environment), bytes.NewBuffer(newClaps))
@@ -49,11 +54,11 @@ func updateFirebase(newClaps []byte, method string) (*http.Response, error) {
 	return response, err
 }
 
-func relayResponse(response *http.Response, w http.ResponseWriter) {
-	data, err := ioutil.ReadAll(response.Body)
-	defer response.Body.Close()
+func relayResponse(res *http.Response, w http.ResponseWriter) {
+	data, err := ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error relaying Firebase response", err), http.StatusBadRequest)
+		sendError(w, "Error relaying Firebase response", err)
 		return
 	}
 
@@ -63,7 +68,6 @@ func relayResponse(response *http.Response, w http.ResponseWriter) {
 }
 
 func getCurrentClapsCount(article string) (int, error) {
-	environment := getEnvironment()
 	currentCountBytes, err := getClaps(fmt.Sprintf("%s/claps/%s", environment, article))
 
 	if err != nil {
@@ -87,18 +91,10 @@ func getClapsFromRequest(r *http.Request) (int, error) {
 	return c.Claps, err
 }
 
-func Ping(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, `{ "alive": true }`)
-}
-
-func GetAllClaps(w http.ResponseWriter, r *http.Request) {
-	environment := getEnvironment()
-
+func getAllClaps(w http.ResponseWriter, r *http.Request) {
 	claps, err := getClaps(fmt.Sprintf("%s/claps", environment))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting claps: %v", err), http.StatusBadRequest)
+		sendError(w, "Error getting claps: %v", err)
 		return
 	}
 
@@ -108,50 +104,58 @@ func GetAllClaps(w http.ResponseWriter, r *http.Request) {
 }
 
 // Will delete once move is complete
-func SyncClaps(w http.ResponseWriter, r *http.Request) {
+func syncClaps(w http.ResponseWriter, r *http.Request) {
 	claps, err := getClaps("claps")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting claps: %v", err), http.StatusBadRequest)
+		sendError(w, "Error getting claps: %v", err)
 		return
 	}
 
 	response, err := updateFirebase(claps, http.MethodPut)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error updating Firebase: %v", err), http.StatusBadRequest)
+		sendError(w, "Error updating Firebase: %v", err)
 		return
 	}
 	relayResponse(response, w)
 
 }
 
-func AddClaps(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	article := vars["article"]
+func addClaps(w http.ResponseWriter, r *http.Request) {
+	article := mux.Vars(r)["article"]
 
 	currentCount, err := getCurrentClapsCount(article)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting current claps", err), http.StatusBadRequest)
+		sendError(w, "Error getting current claps", err)
 		return
 	}
 
 	clapsToAdd, err := getClapsFromRequest(r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error getting claps from request", err), http.StatusBadRequest)
+		sendError(w, "Error getting claps from request", err)
 		return
 	}
 
-	newClapCount := map[string]int{article: clapsToAdd + currentCount}
-	body, err := json.Marshal(newClapCount)
+	if clapsToAdd > maxClaps {
+		clapsToAdd = maxClaps
+	}
+	newClaps := map[string]int{article: currentCount + clapsToAdd}
+	body, err := json.Marshal(newClaps)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error marshalling data", err), http.StatusBadRequest)
+		sendError(w, "Error marshalling data", err)
 		return
 	}
 
 	response, err := updateFirebase([]byte(body), http.MethodPatch)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error updating Firebase", err), http.StatusBadRequest)
+		sendError(w, "Error updating Firebase", err)
 		return
 	}
 
 	relayResponse(response, w)
+}
+
+func RegisterRoutes(r *mux.Router) {
+	r.HandleFunc("/claps", getAllClaps)
+	r.HandleFunc("/sync", syncClaps).Methods("POST")
+	r.HandleFunc("/clap/{article}", addClaps).Methods("POST")
 }

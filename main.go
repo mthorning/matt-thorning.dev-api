@@ -5,7 +5,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
 	"log"
-	"matt-thorning.dev-api/api"
+	"matt-thorning.dev-api/claps"
 	"net/http"
 )
 
@@ -19,10 +19,7 @@ func main() {
 	}
 
 	r := mux.NewRouter()
-	r.HandleFunc("/ping", api.Ping)
-	r.HandleFunc("/claps", api.GetAllClaps)
-	r.HandleFunc("/sync", api.SyncClaps).Methods("POST")
-	r.HandleFunc("/clap/{article}", api.AddClaps).Methods("POST")
+	claps.RegisterRoutes(r)
 	fmt.Println("Serving on port", Port)
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", Port), r))
 }
