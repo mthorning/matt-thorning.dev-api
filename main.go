@@ -3,23 +3,21 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"log"
-	"matt-thorning.dev-api/claps"
+	"matt-thorning.dev-api/config"
+	"matt-thorning.dev-api/rest"
 	"net/http"
 )
 
-const Port = "8001"
+type Config struct {
+	Port string `default:"8001"`
+}
 
 func main() {
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
+	var conf Config
+	config.SetConfig(&conf)
 	r := mux.NewRouter()
-	claps.RegisterRoutes(r)
-	fmt.Println("Serving on port", Port)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", Port), r))
+	rest.RegisterRoutes(r)
+	fmt.Println("Serving on port", conf.Port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", conf.Port), r))
 }
