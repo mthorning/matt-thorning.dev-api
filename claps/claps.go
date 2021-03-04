@@ -10,6 +10,11 @@ import (
 	"strconv"
 )
 
+type Clap struct {
+	Post  string
+	Total int
+}
+
 type Config struct {
 	FirebaseProjectId string `split_words:"true" required:"true"`
 	Environment       string `default:"development"`
@@ -34,10 +39,10 @@ func GetClaps(firebasePath string) ([]byte, error) {
 	return claps, err
 }
 
-func UpdateFirebase(newClaps []byte, method string) (*http.Response, error) {
+func UpdateFirebase(newClaps string, method string) (*http.Response, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest(method, fmt.Sprintf("https://%s.%s/%s/claps.json", conf.FirebaseProjectId, conf.FirebaseDomain, conf.Environment), bytes.NewBuffer(newClaps))
+	req, err := http.NewRequest(method, fmt.Sprintf("https://%s.%s/%s/claps.json", conf.FirebaseProjectId, conf.FirebaseDomain, conf.Environment), bytes.NewBuffer([]byte(newClaps)))
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +78,7 @@ func AddToClaps(article string, clapsToAdd int) (*http.Response, error) {
 		return nil, err
 	}
 
-	response, err := UpdateFirebase([]byte(body), http.MethodPatch)
+	response, err := UpdateFirebase(string(body), http.MethodPatch)
 	if err != nil {
 		return nil, err
 	}

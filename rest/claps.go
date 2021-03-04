@@ -12,7 +12,10 @@ import (
 )
 
 type Config struct {
-	Environment string `default:"development"`
+	Environment       string `default:"development"`
+	FirebaseProjectId string `split_words:"true" required:"true"`
+	FirebaseDomain    string `split_words:"true" default:"firebaseio.com"`
+	MaxClaps          int    `split_words:"true" default:"20"`
 }
 
 var conf Config
@@ -39,21 +42,6 @@ func relayResponse(res *http.Response, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(data)
-}
-
-// Will delete once move is complete
-func syncClaps(w http.ResponseWriter, r *http.Request) {
-	clapsToSync, err := claps.GetClaps("claps")
-	if sendError(err, w, "Error getting claps: %v") {
-		return
-	}
-
-	response, err := claps.UpdateFirebase(clapsToSync, http.MethodPut)
-	if sendError(err, w, "Error updating Firebase: %v") {
-		return
-	}
-	relayResponse(response, w)
-
 }
 
 func getAllClaps(w http.ResponseWriter, r *http.Request) {
