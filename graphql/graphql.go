@@ -21,39 +21,14 @@ func init() {
 	config.SetConfig(&conf)
 }
 
-var clapType = graphql.NewObject(graphql.ObjectConfig{
-	Name: "Clap",
-	Fields: graphql.Fields{
-		"claps": &graphql.Field{
-			Type: graphql.Int,
-			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				c, err := firebase.GetClaps()
-				if err != nil {
-					return nil, err
-				}
-				j, err := json.Marshal(c)
-				fmt.Println(j)
-
-				return j, err
-			},
-		},
-	},
-})
 var articleType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Article",
 	Fields: graphql.Fields{
+		"slug": &graphql.Field{
+			Type: graphql.String,
+		},
 		"claps": &graphql.Field{
 			Type: graphql.Int,
-			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				c, err := firebase.GetClaps()
-				if err != nil {
-					return nil, err
-				}
-				j, err := json.Marshal(c)
-				fmt.Println(j)
-
-				return j, err
-			},
 		},
 	},
 })
@@ -70,6 +45,17 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 		"articles": &graphql.Field{
 			Type:        articleType,
 			Description: "Get all articles.",
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				firebase.GetArticles()
+				// c, err := firebase.GetClaps()
+				// if err != nil {
+				// 	return nil, err
+				// }
+				// j, err := json.Marshal(c)
+				// fmt.Println(j)
+
+				// return j, err
+			},
 		},
 	},
 })
