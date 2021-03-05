@@ -2,10 +2,8 @@ package rest
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"matt-thorning.dev-api/claps"
 	"net/http"
 )
 
@@ -39,19 +37,19 @@ func syncClaps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var d map[string]int
-	err = json.Unmarshal(oldClaps, &d)
-	if sendError(err, w, "Error unmarshalling json") {
-		return
-	}
+	// var d map[string]int
+	// err = json.Unmarshal(oldClaps, &d)
+	// if sendError(err, w, "Error unmarshalling json") {
+	// 	return
+	// }
 
-	var newClaps []claps.Clap
-	for k, v := range d {
-		newClaps = append(newClaps, claps.Clap{Post: k, Total: v})
-	}
+	// var newClaps []claps.Clap
+	// for k, v := range d {
+	// 	newClaps = append(newClaps, claps.Clap{Post: k, Total: v})
+	// }
+	// body, err := json.Marshal(newClaps)
 
-	body, err := json.Marshal(newClaps)
-	response, err := updateFirebase(body, http.MethodPut)
+	response, err := updateFirebase(oldClaps, http.MethodPut)
 	if sendError(err, w, "Error updating Firebase: %v") {
 		return
 	}

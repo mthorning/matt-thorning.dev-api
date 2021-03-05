@@ -3,10 +3,11 @@ package graphql
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"
 	"github.com/graphql-go/graphql"
-	"matt-thorning.dev-api/claps"
 	"matt-thorning.dev-api/config"
+	"matt-thorning.dev-api/firebase"
 	"net/http"
 )
 
@@ -20,14 +21,39 @@ func init() {
 	config.SetConfig(&conf)
 }
 
-var clapsType = graphql.NewObject(graphql.ObjectConfig{
-	Name: "Claps",
+var clapType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Clap",
 	Fields: graphql.Fields{
-		"post": &graphql.Field{
-			Type: graphql.String,
-		},
-		"total": &graphql.Field{
+		"claps": &graphql.Field{
 			Type: graphql.Int,
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				c, err := firebase.GetClaps()
+				if err != nil {
+					return nil, err
+				}
+				j, err := json.Marshal(c)
+				fmt.Println(j)
+
+				return j, err
+			},
+		},
+	},
+})
+var articleType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Article",
+	Fields: graphql.Fields{
+		"claps": &graphql.Field{
+			Type: graphql.Int,
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				c, err := firebase.GetClaps()
+				if err != nil {
+					return nil, err
+				}
+				j, err := json.Marshal(c)
+				fmt.Println(j)
+
+				return j, err
+			},
 		},
 	},
 })
@@ -41,21 +67,9 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 				return "world", nil
 			},
 		},
-		"claps": &graphql.Field{
-			Type:        graphql.NewList(clapsType),
-			Description: "Get all claps.",
-			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-
-				c, err := claps.GetClaps(fmt.Sprintf("%s/claps", conf.Environment))
-				if err != nil {
-					return nil, err
-				}
-				fmt.Println(string(c))
-				var d []claps.Clap
-				err = json.Unmarshal(c, &d)
-
-				return d, err
-			},
+		"articles": &graphql.Field{
+			Type:        articleType,
+			Description: "Get all articles.",
 		},
 	},
 })
@@ -80,6 +94,12 @@ type reqBody struct {
 }
 
 func RegisterRoutes(router *mux.Router) {
+	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
+	if err != nil {
+		panic(err)
+	}
+
+	router.Handle("/graphiql", graphiqlHandler)
 	router.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
 
 		var rBody reqBody
