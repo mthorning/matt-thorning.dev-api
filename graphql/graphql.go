@@ -24,11 +24,14 @@ func init() {
 var articleType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Article",
 	Fields: graphql.Fields{
-		"slug": &graphql.Field{
-			Type: graphql.String,
+		"id": &graphql.Field{
+			Type: graphql.ID,
 		},
 		"claps": &graphql.Field{
 			Type: graphql.Int,
+		},
+		"slug": &graphql.Field{
+			Type: graphql.String,
 		},
 	},
 })
@@ -36,25 +39,28 @@ var articleType = graphql.NewObject(graphql.ObjectConfig{
 var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RootQuery",
 	Fields: graphql.Fields{
-		"hello": &graphql.Field{
+		"ping": &graphql.Field{
 			Type: graphql.String,
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return "world", nil
+				return "pong", nil
 			},
 		},
 		"articles": &graphql.Field{
-			Type:        articleType,
-			Description: "Get all articles.",
+			Type: graphql.NewList(articleType),
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				firebase.GetArticles()
-				// c, err := firebase.GetClaps()
-				// if err != nil {
-				// 	return nil, err
-				// }
-				// j, err := json.Marshal(c)
-				// fmt.Println(j)
-
-				// return j, err
+				return firebase.GetArticles()
+			},
+		},
+		"article": &graphql.Field{
+			Type: articleType,
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				id, _ := p.Args["id"].(string)
+				return firebase.GetArticle(id)
 			},
 		},
 	},
