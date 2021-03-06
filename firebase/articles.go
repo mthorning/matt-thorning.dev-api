@@ -60,13 +60,31 @@ func GetArticles() ([]Article, error) {
 }
 
 func GetArticle(id string) (Article, error) {
-	var article Article
 	doc, err := client.Collection("articles").Doc(id).Get(ctx)
 	if err != nil {
 		return Article{}, err
 	}
+
+	var article Article
 	if err = doc.DataTo(&article); err != nil {
 		return Article{}, err
 	}
+
 	return article, nil
+}
+
+func AddClaps(id string, claps int) (Article, error) {
+	article, err := GetArticle(id)
+	if err != nil {
+		return Article{}, err
+	}
+
+	article.Claps = article.Claps + claps
+
+	_, err = client.Collection("articles").Doc(id).Set(ctx, article)
+	if err != nil {
+		return Article{}, err
+	}
+	return article, nil
+
 }

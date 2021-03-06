@@ -13,6 +13,7 @@ import (
 
 type Config struct {
 	Environment string `default:"development"`
+	MaxClaps    int    `split_words:"true" default:"20"`
 }
 
 var conf Config
@@ -36,23 +37,52 @@ var articleType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var rootMutation = graphql.NewObject(graphql.ObjectConfig{
+	Name: "RootMutation",
+	Fields: graphql.Fields{
+		"addClaps": &graphql.Field{
+			Type:        articleType,
+			Description: "Add new claps to an Article.",
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"claps": &graphql.ArgumentConfig{
+					Type: graphql.NewNonNull(graphql.Int),
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				id, _ := p.Args["id"].(string)
+				claps, _ := p.Args["claps"].(int)
+				if claps > conf.MaxClaps {
+					claps = conf.MaxClaps
+				}
+				return firebase.AddClaps(id, claps)
+			},
+		},
+	},
+})
+
 var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RootQuery",
 	Fields: graphql.Fields{
 		"ping": &graphql.Field{
-			Type: graphql.String,
+			Type:        graphql.String,
+			Description: "Test the server",
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return "pong", nil
 			},
 		},
 		"articles": &graphql.Field{
-			Type: graphql.NewList(articleType),
+			Type:        graphql.NewList(articleType),
+			Description: "Get a list of all Articles.",
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				return firebase.GetArticles()
 			},
 		},
 		"article": &graphql.Field{
-			Type: articleType,
+			Type:        articleType,
+			Description: "Get a single Article by ID.",
 			Args: graphql.FieldConfigArgument{
 				"id": &graphql.ArgumentConfig{
 					Type: graphql.NewNonNull(graphql.String),
@@ -67,7 +97,8 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 })
 
 var Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
-	Query: rootQuery,
+	Query:    rootQuery,
+	Mutation: rootMutation,
 })
 
 func executeQuery(query string, schema graphql.Schema) *graphql.Result {
@@ -82,22 +113,26 @@ func executeQuery(query string, schema graphql.Schema) *graphql.Result {
 }
 
 type reqBody struct {
-	Query string `json:"query"`
+	Query    string `json:"query"`
+	Mutation string `json:"mutation"`
 }
 
 func RegisterRoutes(router *mux.Router) {
-	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
-	if err != nil {
-		panic(err)
+	if conf.Environment == "development" {
+		graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
+		if err != nil {
+			panic(err)
+		}
+
+		router.Handle("/graphiql", graphiqlHandler)
 	}
 
-	router.Handle("/graphiql", graphiqlHandler)
 	router.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
 
 		var rBody reqBody
 		err := json.NewDecoder(r.Body).Decode(&rBody)
 		if err != nil {
-			fmt.Printf("Do something useful: %v\n", err)
+			http.Error(w, "Error decoding request", http.StatusBadRequest)
 		}
 		result := executeQuery(rBody.Query, Schema)
 		json.NewEncoder(w).Encode(result)
