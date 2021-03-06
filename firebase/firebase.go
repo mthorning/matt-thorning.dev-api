@@ -4,6 +4,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"context"
 	firebase "firebase.google.com/go"
+	"fmt"
 	"log"
 )
 
@@ -22,5 +23,9 @@ func InitFirebase(ctx context.Context) {
 }
 
 func getCollection(collection string, ctx context.Context) *firestore.CollectionRef {
+	UIEnvironment := ctx.Value("UIEnvironment")
+	if UIEnvironment == "development" {
+		collection = fmt.Sprintf("dev-%s", collection)
+	}
 	return client.Collection(collection)
 }
