@@ -1,6 +1,7 @@
 package firebase
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,10 +9,10 @@ import (
 )
 
 // temp function to pull in data from the old realtime db
-func seedArticles() {
+func seedArticles(ctx context.Context) {
 	fmt.Println("Seeding articles")
 
-	currentClaps, err := claps.GetClaps(fmt.Sprintf("development/claps"))
+	currentClaps, err := claps.GetClaps(fmt.Sprintf("claps"))
 	if err != nil {
 		log.Fatalf("error getting currentClaps: %v", err)
 	}
@@ -23,7 +24,7 @@ func seedArticles() {
 	}
 
 	for k, v := range d {
-		_, err := client.Collection("articles").Doc(k).Set(ctx, map[string]interface{}{
+		_, err := getCollection("articles", ctx).Doc(k).Set(ctx, map[string]interface{}{
 			"claps": v,
 			"slug":  fmt.Sprintf("/blog/%s", k),
 			"id":    k,
@@ -41,8 +42,8 @@ type Article struct {
 	Slug  string `firestore:"slug"`
 }
 
-func GetArticles() ([]Article, error) {
-	docsnaps, err := client.Collection("articles").Documents(ctx).GetAll()
+func GetArticles(ctx context.Context) ([]Article, error) {
+	docsnaps, err := getCollection("articles", ctx).Documents(ctx).GetAll()
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +60,8 @@ func GetArticles() ([]Article, error) {
 
 }
 
-func GetArticle(id string) (Article, error) {
-	doc, err := client.Collection("articles").Doc(id).Get(ctx)
+func GetArticle(id string, ctx context.Context) (Article, error) {
+	doc, err := getCollection("articles", ctx).Doc(id).Get(ctx)
 	if err != nil {
 		return Article{}, err
 	}
@@ -73,15 +74,16 @@ func GetArticle(id string) (Article, error) {
 	return article, nil
 }
 
-func AddClaps(id string, claps int) (Article, error) {
-	article, err := GetArticle(id)
+func AddClaps(id string, claps int, ctx context.Context) (Article, error) {
+
+	article, err := GetArticle(id, ctx)
 	if err != nil {
 		return Article{}, err
 	}
 
 	article.Claps = article.Claps + claps
 
-	_, err = client.Collection("articles").Doc(id).Set(ctx, article)
+	_, err = getCollection("articles", ctx).Doc(id).Set(ctx, article)
 	if err != nil {
 		return Article{}, err
 	}

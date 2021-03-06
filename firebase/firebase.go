@@ -8,9 +8,8 @@ import (
 )
 
 var client *firestore.Client
-var ctx = context.Background()
 
-func init() {
+func InitFirebase(ctx context.Context) {
 	app, err := firebase.NewApp(ctx, nil)
 	if err != nil {
 		log.Fatalf("error initializing app: %v\n", err)
@@ -20,4 +19,8 @@ func init() {
 	if err != nil {
 		log.Fatalf("error getting firebase client: %v\n", err)
 	}
+}
+
+func getCollection(collection string, ctx context.Context) *firestore.CollectionRef {
+	return client.Collection(collection)
 }

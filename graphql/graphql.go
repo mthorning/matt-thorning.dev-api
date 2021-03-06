@@ -1,11 +1,13 @@
 package graphql
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"
 	"github.com/graphql-go/graphql"
+	"log"
 	"matt-thorning.dev-api/config"
 	"matt-thorning.dev-api/firebase"
 	"net/http"
@@ -57,7 +59,7 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 				if claps > conf.MaxClaps {
 					claps = conf.MaxClaps
 				}
-				return firebase.AddClaps(id, claps)
+				return firebase.AddClaps(id, claps, p.Context)
 			},
 		},
 	},
@@ -77,7 +79,7 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			Type:        graphql.NewList(articleType),
 			Description: "Get a list of all Articles.",
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return firebase.GetArticles()
+				return firebase.GetArticles(p.Context)
 			},
 		},
 		"article": &graphql.Field{
@@ -90,7 +92,7 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				id, _ := p.Args["id"].(string)
-				return firebase.GetArticle(id)
+				return firebase.GetArticle(id, p.Context)
 			},
 		},
 	},
@@ -101,10 +103,11 @@ var Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
 	Mutation: rootMutation,
 })
 
-func executeQuery(query string, schema graphql.Schema) *graphql.Result {
+func executeQuery(query string, schema graphql.Schema, ctx context.Context) *graphql.Result {
 	result := graphql.Do(graphql.Params{
 		Schema:        schema,
 		RequestString: query,
+		Context:       ctx,
 	})
 	if len(result.Errors) > 0 {
 		fmt.Printf("wrong result, unexpected errors: %v", result.Errors)
@@ -117,11 +120,11 @@ type reqBody struct {
 	Mutation string `json:"mutation"`
 }
 
-func RegisterRoutes(router *mux.Router) {
+func RegisterRoutes(router *mux.Router, ctx context.Context) {
 	if conf.Environment == "development" {
 		graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
 		if err != nil {
-			panic(err)
+			log.Printf("Error starting graphiql: %s", err)
 		}
 
 		router.Handle("/graphiql", graphiqlHandler)
@@ -129,12 +132,20 @@ func RegisterRoutes(router *mux.Router) {
 
 	router.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
 
+		UIEnvironment := r.Header.Get("UI-Environment")
+		if UIEnvironment != "production" && UIEnvironment != "development" {
+			http.Error(w, "Error: UI-Environment header required", http.StatusBadRequest)
+			return
+		}
+
+		ctx = context.WithValue(ctx, "UIEnvironment", UIEnvironment)
+
 		var rBody reqBody
 		err := json.NewDecoder(r.Body).Decode(&rBody)
 		if err != nil {
 			http.Error(w, "Error decoding request", http.StatusBadRequest)
 		}
-		result := executeQuery(rBody.Query, Schema)
+		result := executeQuery(rBody.Query, Schema, ctx)
 		json.NewEncoder(w).Encode(result)
 	})
 }
