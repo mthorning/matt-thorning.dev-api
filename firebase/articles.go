@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"matt-thorning.dev-api/claps"
+	"strings"
 	"time"
 )
 
@@ -46,8 +47,18 @@ type Article struct {
 	Date      time.Time `firestore:"date"`
 }
 
-func GetArticles(ctx context.Context) ([]Article, error) {
-	docsnaps, err := getCollection("articles", ctx).Documents(ctx).GetAll()
+func GetArticles(limit int, startAfter string, orderBy string, ctx context.Context) ([]Article, error) {
+	fmt.Println(startAfter)
+	query := getCollection("articles", ctx).Limit(limit)
+	if orderBy != "" {
+		direction := firestore.Asc
+		split := strings.Split(orderBy, ":")
+		if len(split) > 1 && split[1] == "desc" {
+			direction = firestore.Desc
+		}
+		query = query.OrderBy(split[0], direction)
+	}
+	docsnaps, err := query.Documents(ctx).GetAll()
 	if err != nil {
 		return nil, err
 	}
