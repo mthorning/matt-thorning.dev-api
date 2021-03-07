@@ -23,8 +23,8 @@ func InitFirebase(ctx context.Context) {
 }
 
 func getCollection(collection string, ctx context.Context) *firestore.CollectionRef {
-	UIEnvironment := ctx.Value("UIEnvironment")
-	if UIEnvironment == "development" {
+	uiEnvironment := ctx.Value("uiEnvironment")
+	if uiEnvironment == "development" {
 		collection = fmt.Sprintf("dev-%s", collection)
 	}
 	return client.Collection(collection)

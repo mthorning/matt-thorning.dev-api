@@ -1,11 +1,13 @@
 package firebase
 
 import (
+	"cloud.google.com/go/firestore"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"matt-thorning.dev-api/claps"
+	"time"
 )
 
 // temp function to pull in data from the old realtime db
@@ -37,9 +39,11 @@ func seedArticles(ctx context.Context) {
 }
 
 type Article struct {
-	Claps int    `firestore:"claps"`
-	ID    string `firestore:"id"`
-	Slug  string `firestore:"slug"`
+	Claps     int       `firestore:"claps"`
+	ID        string    `firestore:"id"`
+	Slug      string    `firestore:"slug"`
+	Published bool      `firestore:"published"`
+	Date      time.Time `firestore:"date"`
 }
 
 func GetArticles(ctx context.Context) ([]Article, error) {
@@ -88,5 +92,21 @@ func AddClaps(id string, claps int, ctx context.Context) (Article, error) {
 		return Article{}, err
 	}
 	return article, nil
+}
 
+func UpdateArticle(id string, rawData interface{}, ctx context.Context) (Article, error) {
+	data := rawData.(map[string]interface{})
+	date, ok := data["date"].(string)
+	if ok {
+		t, err := time.Parse("2006-01-02T15:04:05", date)
+		if err != nil {
+			return Article{}, err
+		}
+		data["date"] = t
+	}
+	_, err := getCollection("articles", ctx).Doc(id).Set(ctx, data, firestore.MergeAll)
+	if err != nil {
+		return Article{}, err
+	}
+	return GetArticle(id, ctx)
 }

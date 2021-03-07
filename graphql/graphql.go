@@ -2,26 +2,51 @@ package graphql
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"
 	"github.com/graphql-go/graphql"
-	"log"
 	"matt-thorning.dev-api/config"
 	"matt-thorning.dev-api/firebase"
 	"net/http"
+	"strings"
 )
 
 type Config struct {
 	Environment string `default:"development"`
 	MaxClaps    int    `split_words:"true" default:"20"`
+	UIUsername  string `split_words:"true" required:"true"`
+	UIPassword  string `split_words:"true" required:"true"`
 }
 
 var conf Config
 
 func init() {
 	config.SetConfig(&conf)
+}
+
+func validate(username, password string) bool {
+	if username == conf.UIUsername && password == conf.UIPassword {
+		return true
+	}
+	return false
+}
+
+func authenticate(auth string) error {
+	key := strings.SplitN(auth, " ", 2)
+	if len(key) != 2 || string(key[0]) != "Basic" {
+		return errors.New("Authentication failed.")
+	}
+
+	payload, _ := base64.StdEncoding.DecodeString(key[1])
+	uandp := strings.SplitN(string(payload), ":", 2)
+
+	if len(uandp) != 2 || !validate(uandp[0], uandp[1]) {
+		return errors.New("Authentication failed.")
+	}
+	return nil
 }
 
 var articleType = graphql.NewObject(graphql.ObjectConfig{
@@ -36,6 +61,27 @@ var articleType = graphql.NewObject(graphql.ObjectConfig{
 		"slug": &graphql.Field{
 			Type: graphql.String,
 		},
+		"published": &graphql.Field{
+			Type: graphql.Boolean,
+		},
+		"date": &graphql.Field{
+			Type: graphql.DateTime,
+		},
+	},
+})
+
+var updateArticleType = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "UpdateArticle",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"slug": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"published": &graphql.InputObjectFieldConfig{
+			Type: graphql.Boolean,
+		},
+		"date": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
 	},
 })
 
@@ -47,7 +93,7 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 			Description: fmt.Sprintf("Add new claps to an Article. Limited to %d", conf.MaxClaps),
 			Args: graphql.FieldConfigArgument{
 				"id": &graphql.ArgumentConfig{
-					Type: graphql.NewNonNull(graphql.String),
+					Type: graphql.NewNonNull(graphql.ID),
 				},
 				"claps": &graphql.ArgumentConfig{
 					Type: graphql.NewNonNull(graphql.Int),
@@ -62,6 +108,24 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 				return firebase.AddClaps(id, claps, p.Context)
 			},
 		},
+		"updateArticle": &graphql.Field{
+			Type:        articleType,
+			Description: fmt.Sprintf("Update the fields on an article", conf.MaxClaps),
+			Args: graphql.FieldConfigArgument{
+				"id": &graphql.ArgumentConfig{
+					Type: graphql.NewNonNull(graphql.String),
+				},
+				"data": &graphql.ArgumentConfig{
+					Type: updateArticleType,
+				},
+			},
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				id, _ := p.Args["id"].(string)
+				data, _ := p.Args["data"]
+				article, err := firebase.UpdateArticle(id, data, p.Context)
+				return article, err
+			},
+		},
 	},
 })
 
@@ -72,6 +136,10 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			Type:        graphql.String,
 			Description: "Test the server",
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				auth := p.Context.Value("auth")
+				if err := authenticate(fmt.Sprintf("%v", auth)); err != nil {
+					return "", err
+				}
 				return "pong", nil
 			},
 		},
@@ -87,7 +155,7 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			Description: "Get a single Article by ID.",
 			Args: graphql.FieldConfigArgument{
 				"id": &graphql.ArgumentConfig{
-					Type: graphql.NewNonNull(graphql.String),
+					Type: graphql.NewNonNull(graphql.ID),
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -121,24 +189,16 @@ type reqBody struct {
 }
 
 func RegisterRoutes(router *mux.Router, ctx context.Context) {
-	if conf.Environment == "development" {
-		graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
-		if err != nil {
-			log.Printf("Error starting graphiql: %s", err)
-		}
-
-		router.Handle("/graphiql", graphiqlHandler)
-	}
-
 	router.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
-
-		UIEnvironment := r.Header.Get("UI-Environment")
-		if UIEnvironment != "production" && UIEnvironment != "development" {
+		uiEnvironment := r.Header.Get("UI-Environment")
+		if uiEnvironment != "production" && uiEnvironment != "development" {
 			http.Error(w, "Error: UI-Environment header required", http.StatusBadRequest)
 			return
 		}
+		ctx = context.WithValue(ctx, "uiEnvironment", uiEnvironment)
 
-		ctx = context.WithValue(ctx, "UIEnvironment", UIEnvironment)
+		auth := r.Header.Get("Authorization")
+		ctx = context.WithValue(ctx, "auth", auth)
 
 		var rBody reqBody
 		err := json.NewDecoder(r.Body).Decode(&rBody)
