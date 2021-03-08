@@ -2,8 +2,8 @@ package claps
 
 import (
 	"fmt"
+	"github.com/mthorning/mtdev/config"
 	"io/ioutil"
-	"matt-thorning.dev-api/config"
 	"net/http"
 )
 

@@ -3,7 +3,7 @@ package auth
 import (
 	"encoding/base64"
 	"errors"
-	"matt-thorning.dev-api/config"
+	"github.com/mthorning/mtdev/config"
 	"strings"
 )
 

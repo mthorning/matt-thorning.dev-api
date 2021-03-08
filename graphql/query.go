@@ -2,7 +2,7 @@ package graphql
 
 import (
 	"github.com/graphql-go/graphql"
-	"matt-thorning.dev-api/firebase"
+	"github.com/mthorning/mtdev/firebase"
 )
 
 var rootQuery = graphql.NewObject(graphql.ObjectConfig{
@@ -16,16 +16,16 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			},
 		},
 		"articles": &graphql.Field{
-			Type:        graphql.NewList(articleType),
+			Type:        articlesConnectionType,
 			Description: "Get a list of all Articles.",
 			Args: graphql.FieldConfigArgument{
-				"limit": &graphql.ArgumentConfig{
+				"first": &graphql.ArgumentConfig{
 					Type:        graphql.NewNonNull(graphql.Int),
 					Description: "Number of articles to fetch.",
 				},
-				"startAfter": &graphql.ArgumentConfig{
+				"after": &graphql.ArgumentConfig{
 					Type:        graphql.ID,
-					Description: "Document to start selection after (either ID or field in 'orderBy').",
+					Description: "Cursor from previous data set.",
 				},
 				"orderBy": &graphql.ArgumentConfig{
 					Type:        graphql.String,
@@ -33,10 +33,11 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				startAfter, _ := p.Args["startAfter"].(string)
-				limit, _ := p.Args["limit"].(int)
+				after, _ := p.Args["after"].(string)
+				first, _ := p.Args["first"].(int)
 				orderBy, _ := p.Args["orderBy"].(string)
-				return firebase.GetArticles(limit, startAfter, orderBy, p.Context)
+				articles, err := firebase.GetArticles(first, after, orderBy, p.Context)
+				return articles, err
 			},
 		},
 		"article": &graphql.Field{

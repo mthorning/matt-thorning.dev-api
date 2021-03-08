@@ -7,9 +7,6 @@ import (
 var articleType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Article",
 	Fields: graphql.Fields{
-		"id": &graphql.Field{
-			Type: graphql.ID,
-		},
 		"claps": &graphql.Field{
 			Type: graphql.Int,
 		},
@@ -36,6 +33,35 @@ var updateArticleType = graphql.NewInputObject(graphql.InputObjectConfig{
 		},
 		"date": &graphql.InputObjectFieldConfig{
 			Type: graphql.String,
+		},
+	},
+})
+
+var articlesConnectionType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "ArticlesConnection",
+	Fields: graphql.Fields{
+		"edges": &graphql.Field{
+			Type: graphql.NewList(graphql.NewObject(graphql.ObjectConfig{
+				Name: "ArticlesEdge",
+				Fields: graphql.Fields{
+					"cursor": &graphql.Field{
+						Type: graphql.String,
+					},
+					"node": &graphql.Field{
+						Type: articleType,
+					},
+				},
+			})),
+		},
+		"pageInfo": &graphql.Field{
+			Type: graphql.NewList(graphql.NewObject(graphql.ObjectConfig{
+				Name: "PageInfo",
+				Fields: graphql.Fields{
+					"hasNextPage": &graphql.Field{
+						Type: graphql.Boolean,
+					},
+				},
+			})),
 		},
 	},
 })

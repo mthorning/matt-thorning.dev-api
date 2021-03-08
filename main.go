@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/mthorning/mtdev/config"
+	"github.com/mthorning/mtdev/firebase"
+	"github.com/mthorning/mtdev/graphql"
 	"log"
-	"matt-thorning.dev-api/config"
-	"matt-thorning.dev-api/firebase"
-	"matt-thorning.dev-api/graphql"
 	"net/http"
 )
 

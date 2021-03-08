@@ -3,9 +3,9 @@ package graphql
 import (
 	"fmt"
 	"github.com/graphql-go/graphql"
-	"matt-thorning.dev-api/auth"
-	"matt-thorning.dev-api/config"
-	"matt-thorning.dev-api/firebase"
+	"github.com/mthorning/mtdev/auth"
+	"github.com/mthorning/mtdev/config"
+	"github.com/mthorning/mtdev/firebase"
 )
 
 type specification struct {

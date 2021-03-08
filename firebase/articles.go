@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/mthorning/mtdev/claps"
 	"log"
-	"matt-thorning.dev-api/claps"
 	"strings"
 	"time"
 )
@@ -30,7 +30,6 @@ func seedArticles(ctx context.Context) {
 		_, err := getCollection("articles", ctx).Doc(k).Set(ctx, map[string]interface{}{
 			"claps": v,
 			"slug":  fmt.Sprintf("/blog/%s", k),
-			"id":    k,
 		})
 		if err != nil {
 			log.Printf("An error occured creating %s: %s", k, err)
@@ -41,15 +40,28 @@ func seedArticles(ctx context.Context) {
 
 type Article struct {
 	Claps     int       `firestore:"claps"`
-	ID        string    `firestore:"id"`
 	Slug      string    `firestore:"slug"`
 	Published bool      `firestore:"published"`
 	Date      time.Time `firestore:"date"`
 }
 
-func GetArticles(limit int, startAfter string, orderBy string, ctx context.Context) ([]Article, error) {
-	fmt.Println(startAfter)
-	query := getCollection("articles", ctx).Limit(limit)
+type Edge struct {
+	Cursor string
+	Node   Article
+}
+
+type Connection struct {
+	Edges []Edge
+
+	PageInfo struct {
+		HasNextPage bool
+	}
+}
+
+func GetArticles(limit int, startAfter string, orderBy string, ctx context.Context) (Connection, error) {
+	collection := getCollection("articles", ctx)
+	query := collection.Limit(limit)
+
 	if orderBy != "" {
 		direction := firestore.Asc
 		split := strings.Split(orderBy, ":")
@@ -58,20 +70,38 @@ func GetArticles(limit int, startAfter string, orderBy string, ctx context.Conte
 		}
 		query = query.OrderBy(split[0], direction)
 	}
-	docsnaps, err := query.Documents(ctx).GetAll()
-	if err != nil {
-		return nil, err
+
+	if startAfter != "" {
+		dsnap, err := collection.Doc(startAfter).Get(ctx)
+		if err != nil {
+			fmt.Println(err)
+		}
+		query = query.StartAfter(dsnap)
 	}
 
-	var articles []Article
+	docsnaps, err := query.Documents(ctx).GetAll()
+	if err != nil {
+		return Connection{}, err
+	}
+
+	var edges []Edge
 	var article Article
 	for _, doc := range docsnaps {
 		if err := doc.DataTo(&article); err != nil {
-			return nil, err
+			return Connection{}, err
 		}
-		articles = append(articles, article)
+		edge := Edge{
+			Node:   article,
+			Cursor: doc.Ref.ID,
+		}
+		edges = append(edges, edge)
 	}
-	return articles, nil
+
+	connection := Connection{
+		Edges:    edges,
+		PageInfo: struct{ HasNextPage bool }{true},
+	}
+	return connection, nil
 
 }
 
