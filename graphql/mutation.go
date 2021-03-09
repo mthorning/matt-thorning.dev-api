@@ -46,7 +46,7 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 			Description: fmt.Sprintf("Update the fields on an article", conf.MaxClaps),
 			Args: graphql.FieldConfigArgument{
 				"id": &graphql.ArgumentConfig{
-					Type: graphql.NewNonNull(graphql.String),
+					Type: graphql.NewNonNull(graphql.ID),
 				},
 				"data": &graphql.ArgumentConfig{
 					Type: updateArticleType,

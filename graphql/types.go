@@ -13,6 +13,9 @@ var articleType = graphql.NewObject(graphql.ObjectConfig{
 		"slug": &graphql.Field{
 			Type: graphql.String,
 		},
+		"title": &graphql.Field{
+			Type: graphql.String,
+		},
 		"published": &graphql.Field{
 			Type: graphql.Boolean,
 		},
@@ -26,6 +29,9 @@ var updateArticleType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "UpdateArticle",
 	Fields: graphql.InputObjectConfigFieldMap{
 		"slug": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"title": &graphql.InputObjectFieldConfig{
 			Type: graphql.String,
 		},
 		"published": &graphql.InputObjectFieldConfig{

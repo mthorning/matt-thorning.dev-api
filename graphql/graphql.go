@@ -14,11 +14,12 @@ var Schema, _ = graphql.NewSchema(graphql.SchemaConfig{
 	Mutation: rootMutation,
 })
 
-func executeQuery(query string, schema graphql.Schema, ctx context.Context) *graphql.Result {
+func executeQuery(query string, schema graphql.Schema, variables map[string]interface{}, ctx context.Context) *graphql.Result {
 	result := graphql.Do(graphql.Params{
-		Schema:        schema,
-		RequestString: query,
-		Context:       ctx,
+		Schema:         schema,
+		RequestString:  query,
+		Context:        ctx,
+		VariableValues: variables,
 	})
 	if len(result.Errors) > 0 {
 		fmt.Printf("wrong result, unexpected errors: %v", result.Errors)
@@ -27,8 +28,9 @@ func executeQuery(query string, schema graphql.Schema, ctx context.Context) *gra
 }
 
 type reqBody struct {
-	Query    string `json:"query"`
-	Mutation string `json:"mutation"`
+	Query     string                 `json:"query"`
+	Mutation  string                 `json:"mutation"`
+	Variables map[string]interface{} `json:"variables"`
 }
 
 func RegisterRoutes(router *mux.Router, ctx context.Context) {
@@ -48,7 +50,7 @@ func RegisterRoutes(router *mux.Router, ctx context.Context) {
 		if err != nil {
 			http.Error(w, "Error decoding request", http.StatusBadRequest)
 		}
-		result := executeQuery(rBody.Query, Schema, ctx)
+		result := executeQuery(rBody.Query, Schema, rBody.Variables, ctx)
 		json.NewEncoder(w).Encode(result)
 	})
 }
