@@ -28,6 +28,9 @@ var articleType = graphql.NewObject(graphql.ObjectConfig{
 var updateArticleType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "UpdateArticle",
 	Fields: graphql.InputObjectConfigFieldMap{
+		"id": &graphql.InputObjectFieldConfig{
+			Type: graphql.ID,
+		},
 		"slug": &graphql.InputObjectFieldConfig{
 			Type: graphql.String,
 		},

@@ -41,15 +41,12 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 				return firebase.AddClaps(id, claps, p.Context)
 			},
 		},
-		"updateArticle": &graphql.Field{
-			Type:        articleType,
+		"updateArticles": &graphql.Field{
+			Type:        graphql.String,
 			Description: fmt.Sprintf("Update the fields on an article", conf.MaxClaps),
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{
-					Type: graphql.NewNonNull(graphql.ID),
-				},
 				"data": &graphql.ArgumentConfig{
-					Type: updateArticleType,
+					Type: graphql.NewNonNull(graphql.NewList(updateArticleType)),
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
@@ -57,9 +54,8 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 				if err := auth.Authenticate(fmt.Sprintf("%v", authHeader)); err != nil {
 					return "", err
 				}
-				id, _ := p.Args["id"].(string)
-				data, _ := p.Args["data"]
-				article, err := firebase.UpdateArticle(id, data, p.Context)
+				data, _ := p.Args["data"].([]interface{})
+				article, err := firebase.UpdateArticles(data, p.Context)
 				return article, err
 			},
 		},

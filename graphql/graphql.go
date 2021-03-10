@@ -35,6 +35,7 @@ type reqBody struct {
 
 func RegisterRoutes(router *mux.Router, ctx context.Context) {
 	router.HandleFunc("/graphql", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		uiEnvironment := r.Header.Get("UI-Environment")
 		if uiEnvironment != "production" && uiEnvironment != "development" {
 			http.Error(w, "Error: UI-Environment header required", http.StatusBadRequest)

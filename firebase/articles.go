@@ -135,19 +135,29 @@ func AddClaps(id string, claps int, ctx context.Context) (Article, error) {
 	return article, nil
 }
 
-func UpdateArticle(id string, rawData interface{}, ctx context.Context) (Article, error) {
-	data := rawData.(map[string]interface{})
-	date, ok := data["date"].(string)
-	if ok {
-		t, err := time.Parse("2006-01-02T15:04:05", date)
-		if err != nil {
-			return Article{}, err
+func UpdateArticles(articles []interface{}, ctx context.Context) (string, error) {
+	batch := client.Batch()
+	for _, article := range articles {
+		data := article.(map[string]interface{})
+		date, ok := data["date"].(string)
+		if ok {
+			t, err := time.Parse("2006-01-02T15:04:05", date)
+			if err != nil {
+				return "", err
+			}
+			data["date"] = t
 		}
-		data["date"] = t
+
+		id, ok := data["id"].(string)
+		delete(data, "id")
+		if ok {
+			docRef := getCollection("articles", ctx).Doc(id)
+			batch.Set(docRef, data, firestore.MergeAll)
+		}
 	}
-	_, err := getCollection("articles", ctx).Doc(id).Set(ctx, data, firestore.MergeAll)
+	_, err := batch.Commit(ctx)
 	if err != nil {
-		return Article{}, err
+		return "", err
 	}
-	return GetArticle(id, ctx)
+	return "success", nil
 }
