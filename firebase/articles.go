@@ -29,8 +29,7 @@ func seedArticles(ctx context.Context) {
 	for k, v := range d {
 		_, err := getCollection("articles", ctx).Doc(k).Set(ctx, map[string]interface{}{
 			"claps": v,
-			"slug":  fmt.Sprintf("/blog/%s", k),
-		})
+		}, firestore.MergeAll)
 		if err != nil {
 			log.Printf("An error occured creating %s: %s", k, err)
 		}
@@ -39,10 +38,14 @@ func seedArticles(ctx context.Context) {
 }
 
 type Article struct {
-	Claps     int       `firestore:"claps"`
-	Slug      string    `firestore:"slug"`
-	Published bool      `firestore:"published"`
-	Date      time.Time `firestore:"date"`
+	Claps      int       `firestore:"claps"`
+	Slug       string    `firestore:"slug"`
+	Published  bool      `firestore:"published"`
+	Date       time.Time `firestore:"date"`
+	Title      string    `firestore:"title"`
+	Excerpt    string    `firestore:"excerpt"`
+	Tags       []string  `firestore:"tags"`
+	TimeToRead int       `firestore:"timeToRead"`
 }
 
 type Edge struct {
@@ -98,7 +101,8 @@ func GetArticles(limit int, startAfter string, orderBy string, ctx context.Conte
 	}
 
 	connection := Connection{
-		Edges:    edges,
+		Edges: edges,
+		// FIXME
 		PageInfo: struct{ HasNextPage bool }{true},
 	}
 	return connection, nil

@@ -22,6 +22,15 @@ var articleType = graphql.NewObject(graphql.ObjectConfig{
 		"date": &graphql.Field{
 			Type: graphql.DateTime,
 		},
+		"excerpt": &graphql.Field{
+			Type: graphql.String,
+		},
+		"timeToRead": &graphql.Field{
+			Type: graphql.Int,
+		},
+		"tags": &graphql.Field{
+			Type: graphql.NewList(graphql.String),
+		},
 	},
 })
 
@@ -43,6 +52,15 @@ var updateArticleType = graphql.NewInputObject(graphql.InputObjectConfig{
 		"date": &graphql.InputObjectFieldConfig{
 			Type: graphql.String,
 		},
+		"excerpt": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
+		"timeToRead": &graphql.InputObjectFieldConfig{
+			Type: graphql.Int,
+		},
+		"tags": &graphql.InputObjectFieldConfig{
+			Type: graphql.NewList(graphql.String),
+		},
 	},
 })
 
@@ -63,14 +81,14 @@ var articlesConnectionType = graphql.NewObject(graphql.ObjectConfig{
 			})),
 		},
 		"pageInfo": &graphql.Field{
-			Type: graphql.NewList(graphql.NewObject(graphql.ObjectConfig{
+			Type: graphql.NewObject(graphql.ObjectConfig{
 				Name: "PageInfo",
 				Fields: graphql.Fields{
 					"hasNextPage": &graphql.Field{
 						Type: graphql.Boolean,
 					},
 				},
-			})),
+			}),
 		},
 	},
 })
