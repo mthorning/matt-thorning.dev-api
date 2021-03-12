@@ -61,9 +61,13 @@ type Connection struct {
 	}
 }
 
-func GetArticles(limit int, startAfter string, orderBy string, ctx context.Context) (Connection, error) {
+func GetArticles(limit int, startAfter string, orderBy string, unpublished bool, ctx context.Context) (Connection, error) {
 	collection := getCollection("articles", ctx)
-	query := collection.Limit(limit)
+	query := collection.Limit(limit + 1)
+
+	if !unpublished {
+		query = collection.Where("published", "==", true)
+	}
 
 	if orderBy != "" {
 		direction := firestore.Asc
@@ -81,10 +85,15 @@ func GetArticles(limit int, startAfter string, orderBy string, ctx context.Conte
 		}
 		query = query.StartAfter(dsnap)
 	}
+	query = query.Limit(limit + 1)
 
 	docsnaps, err := query.Documents(ctx).GetAll()
 	if err != nil {
 		return Connection{}, err
+	}
+	hasNextPage := len(docsnaps) > limit
+	if hasNextPage {
+		docsnaps = docsnaps[:len(docsnaps)-1]
 	}
 
 	var edges []Edge
@@ -103,7 +112,7 @@ func GetArticles(limit int, startAfter string, orderBy string, ctx context.Conte
 	connection := Connection{
 		Edges: edges,
 		// FIXME
-		PageInfo: struct{ HasNextPage bool }{true},
+		PageInfo: struct{ HasNextPage bool }{hasNextPage},
 	}
 	return connection, nil
 

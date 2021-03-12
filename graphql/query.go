@@ -31,12 +31,17 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 					Type:        graphql.String,
 					Description: "Field to order by, prefix with ':desc' for descending order.",
 				},
+				"unpublished": &graphql.ArgumentConfig{
+					Type:        graphql.Boolean,
+					Description: "Show unpublished articles as well.",
+				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				after, _ := p.Args["after"].(string)
 				first, _ := p.Args["first"].(int)
 				orderBy, _ := p.Args["orderBy"].(string)
-				articles, err := firebase.GetArticles(first, after, orderBy, p.Context)
+				unpublished, _ := p.Args["unpublished"].(bool)
+				articles, err := firebase.GetArticles(first, after, orderBy, unpublished, p.Context)
 				return articles, err
 			},
 		},
