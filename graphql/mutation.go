@@ -6,6 +6,7 @@ import (
 	"github.com/mthorning/mtdev/auth"
 	"github.com/mthorning/mtdev/config"
 	"github.com/mthorning/mtdev/firebase"
+	"github.com/mthorning/mtdev/mongo"
 )
 
 type specification struct {
@@ -55,7 +56,7 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 					return "", err
 				}
 				data, _ := p.Args["data"].([]interface{})
-				article, err := firebase.UpdateArticles(data, p.Context)
+				article, err := mongo.UpdateArticles(data, p.Context)
 				return article, err
 			},
 		},

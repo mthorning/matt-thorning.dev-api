@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/mthorning/mtdev/config"
-	"github.com/mthorning/mtdev/firebase"
+	"github.com/mthorning/mtdev/mongo"
+	// "github.com/mthorning/mtdev/firebase"
 	"github.com/mthorning/mtdev/graphql"
 	"log"
 	"net/http"
@@ -20,7 +21,8 @@ func main() {
 	config.SetConfig(&conf)
 
 	var ctx = context.Background()
-	firebase.InitFirebase(ctx)
+	// firebase.InitFirebase(ctx)
+	mongo.InitDB(ctx)
 
 	r := mux.NewRouter()
 	graphql.RegisterRoutes(r, ctx)

@@ -3,6 +3,7 @@ package graphql
 import (
 	"github.com/graphql-go/graphql"
 	"github.com/mthorning/mtdev/firebase"
+	"github.com/mthorning/mtdev/mongo"
 )
 
 var rootQuery = graphql.NewObject(graphql.ObjectConfig{
@@ -35,17 +36,13 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 					Type:        graphql.Boolean,
 					Description: "Show unpublished articles as well.",
 				},
-				"ids": &graphql.ArgumentConfig{
-					Type: graphql.NewList(graphql.ID),
-				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				after, _ := p.Args["after"].(string)
 				first, _ := p.Args["first"].(int)
 				orderBy, _ := p.Args["orderBy"].(string)
 				unpublished, _ := p.Args["unpublished"].(bool)
-				IDs, _ := p.Args["ids"].([]interface{})
-				return firebase.GetArticles(first, after, orderBy, unpublished, IDs, p.Context)
+				return mongo.GetArticles(first, after, orderBy, unpublished, p.Context)
 			},
 		},
 		"article": &graphql.Field{
