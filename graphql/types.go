@@ -92,3 +92,15 @@ var articlesConnectionType = graphql.NewObject(graphql.ObjectConfig{
 		},
 	},
 })
+
+var tagType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Tag",
+	Fields: graphql.Fields{
+		"name": &graphql.Field{
+			Type: graphql.String,
+		},
+		"articles": &graphql.Field{
+			Type: graphql.NewList(graphql.String),
+		},
+	},
+})

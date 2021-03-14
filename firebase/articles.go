@@ -27,7 +27,7 @@ func seedArticles(ctx context.Context) {
 	}
 
 	for k, v := range d {
-		_, err := getCollection("articles", ctx).Doc(k).Set(ctx, map[string]interface{}{
+		_, err := client.Collection("articles").Doc(k).Set(ctx, map[string]interface{}{
 			"claps": v,
 		}, firestore.MergeAll)
 		if err != nil {
@@ -37,15 +37,25 @@ func seedArticles(ctx context.Context) {
 
 }
 
+func toStringSlice(slice []interface{}) []string {
+	var stringSlice []string
+	for _, t := range slice {
+		stringSlice = append(stringSlice, t.(string))
+	}
+	return stringSlice
+}
+
 type Article struct {
 	Claps      int       `firestore:"claps"`
+	FakeClaps  int       `firestore:"fakeClaps"`
+	ID         string    `firestore:"id"`
 	Slug       string    `firestore:"slug"`
 	Published  bool      `firestore:"published"`
 	Date       time.Time `firestore:"date"`
 	Title      string    `firestore:"title"`
 	Excerpt    string    `firestore:"excerpt"`
-	Tags       []string  `firestore:"tags"`
 	TimeToRead int       `firestore:"timeToRead"`
+	Tags       []string  `firestore:"tags"`
 }
 
 type Edge struct {
@@ -61,12 +71,24 @@ type Connection struct {
 	}
 }
 
-func GetArticles(limit int, startAfter string, orderBy string, unpublished bool, ctx context.Context) (Connection, error) {
-	collection := getCollection("articles", ctx)
+func useFakeClaps(article *Article, ctx context.Context) {
+	uiEnvironment := ctx.Value("uiEnvironment")
+	if uiEnvironment == "development" {
+		article.Claps = article.FakeClaps
+	}
+}
+
+func GetArticles(limit int, startAfter string, orderBy string, unpublished bool, IDs []interface{}, ctx context.Context) (Connection, error) {
+	collection := client.Collection("articles")
 	query := collection.Limit(limit + 1)
 
+	fmt.Println(IDs)
+	if len(IDs) > 0 {
+		query = query.Where("id", "in", IDs)
+	}
+
 	if !unpublished {
-		query = collection.Where("published", "==", true)
+		query = query.Where("published", "==", true)
 	}
 
 	if orderBy != "" {
@@ -81,11 +103,10 @@ func GetArticles(limit int, startAfter string, orderBy string, unpublished bool,
 	if startAfter != "" {
 		dsnap, err := collection.Doc(startAfter).Get(ctx)
 		if err != nil {
-			fmt.Println(err)
+			return Connection{}, err
 		}
 		query = query.StartAfter(dsnap)
 	}
-	query = query.Limit(limit + 1)
 
 	docsnaps, err := query.Documents(ctx).GetAll()
 	if err != nil {
@@ -102,6 +123,8 @@ func GetArticles(limit int, startAfter string, orderBy string, unpublished bool,
 		if err := doc.DataTo(&article); err != nil {
 			return Connection{}, err
 		}
+		useFakeClaps(&article, ctx)
+
 		edge := Edge{
 			Node:   article,
 			Cursor: doc.Ref.ID,
@@ -110,8 +133,7 @@ func GetArticles(limit int, startAfter string, orderBy string, unpublished bool,
 	}
 
 	connection := Connection{
-		Edges: edges,
-		// FIXME
+		Edges:    edges,
 		PageInfo: struct{ HasNextPage bool }{hasNextPage},
 	}
 	return connection, nil
@@ -119,7 +141,7 @@ func GetArticles(limit int, startAfter string, orderBy string, unpublished bool,
 }
 
 func GetArticle(id string, ctx context.Context) (Article, error) {
-	doc, err := getCollection("articles", ctx).Doc(id).Get(ctx)
+	doc, err := client.Collection("articles").Doc(id).Get(ctx)
 	if err != nil {
 		return Article{}, err
 	}
@@ -128,6 +150,7 @@ func GetArticle(id string, ctx context.Context) (Article, error) {
 	if err = doc.DataTo(&article); err != nil {
 		return Article{}, err
 	}
+	useFakeClaps(&article, ctx)
 
 	return article, nil
 }
@@ -139,19 +162,29 @@ func AddClaps(id string, claps int, ctx context.Context) (Article, error) {
 		return Article{}, err
 	}
 
-	article.Claps = article.Claps + claps
+	uiEnvironment := ctx.Value("uiEnvironment")
+	if uiEnvironment == "development" {
+		article.FakeClaps = article.FakeClaps + claps
+	} else {
+		article.Claps = article.Claps + claps
+	}
 
-	_, err = getCollection("articles", ctx).Doc(id).Set(ctx, article)
+	_, err = client.Collection("articles").Doc(id).Set(ctx, article)
 	if err != nil {
 		return Article{}, err
 	}
+	useFakeClaps(&article, ctx)
 	return article, nil
 }
 
 func UpdateArticles(articles []interface{}, ctx context.Context) (string, error) {
+	tagsMap := make(map[string][]string)
 	batch := client.Batch()
 	for _, article := range articles {
 		data := article.(map[string]interface{})
+
+		id := data["id"].(string)
+
 		date, ok := data["date"].(string)
 		if ok {
 			t, err := time.Parse("2006-01-02T15:04:05", date)
@@ -161,15 +194,27 @@ func UpdateArticles(articles []interface{}, ctx context.Context) (string, error)
 			data["date"] = t
 		}
 
-		id, ok := data["id"].(string)
-		delete(data, "id")
+		tags, ok := data["tags"].([]interface{})
 		if ok {
-			docRef := getCollection("articles", ctx).Doc(id)
-			batch.Set(docRef, data, firestore.MergeAll)
+			for _, tag := range tags {
+				key := tag.(string)
+				articleIDs, ok := tagsMap[key]
+				if ok {
+					tagsMap[key] = append(articleIDs, id)
+				} else {
+					tagsMap[key] = []string{id}
+				}
+			}
 		}
+
+		docRef := client.Collection("articles").Doc(id)
+		batch.Set(docRef, data, firestore.MergeAll)
 	}
 	_, err := batch.Commit(ctx)
 	if err != nil {
+		return "", err
+	}
+	if err = updateTags(tagsMap, ctx); err != nil {
 		return "", err
 	}
 	return "success", nil

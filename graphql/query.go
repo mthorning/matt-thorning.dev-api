@@ -35,14 +35,17 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 					Type:        graphql.Boolean,
 					Description: "Show unpublished articles as well.",
 				},
+				"ids": &graphql.ArgumentConfig{
+					Type: graphql.NewList(graphql.ID),
+				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				after, _ := p.Args["after"].(string)
 				first, _ := p.Args["first"].(int)
 				orderBy, _ := p.Args["orderBy"].(string)
 				unpublished, _ := p.Args["unpublished"].(bool)
-				articles, err := firebase.GetArticles(first, after, orderBy, unpublished, p.Context)
-				return articles, err
+				IDs, _ := p.Args["ids"].([]interface{})
+				return firebase.GetArticles(first, after, orderBy, unpublished, IDs, p.Context)
 			},
 		},
 		"article": &graphql.Field{
@@ -56,6 +59,13 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				id, _ := p.Args["id"].(string)
 				return firebase.GetArticle(id, p.Context)
+			},
+		},
+		"tags": &graphql.Field{
+			Type:        graphql.NewList(tagType),
+			Description: "Get a list of available tags.",
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				return firebase.GetTags(p.Context)
 			},
 		},
 	},
