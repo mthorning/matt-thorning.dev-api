@@ -1,3 +1,5 @@
-#! /bin/bash
+#!/bin/bash
+
+set -e
 
 docker run --rm -p 27017:27017 -v ~/containers/mongo/mtd-data/db:/data/db --name mongo mongo > /dev/null

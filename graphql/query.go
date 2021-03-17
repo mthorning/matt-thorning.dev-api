@@ -20,29 +20,51 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			Type:        articlesConnectionType,
 			Description: "Get a list of all Articles.",
 			Args: graphql.FieldConfigArgument{
+				"orderBy": &graphql.ArgumentConfig{
+					Type:        graphql.NewNonNull(graphql.String),
+					Description: "Field to order by, prefix with ':desc' for descending order.",
+				},
 				"first": &graphql.ArgumentConfig{
-					Type:        graphql.NewNonNull(graphql.Int),
+					Type:        graphql.Int,
 					Description: "Number of articles to fetch.",
 				},
 				"after": &graphql.ArgumentConfig{
-					Type:        graphql.ID,
-					Description: "Cursor from previous data set.",
-				},
-				"orderBy": &graphql.ArgumentConfig{
 					Type:        graphql.String,
-					Description: "Field to order by, prefix with ':desc' for descending order.",
+					Description: "Cursor from previous data set.",
 				},
 				"unpublished": &graphql.ArgumentConfig{
 					Type:        graphql.Boolean,
 					Description: "Show unpublished articles as well.",
 				},
+				"tags": &graphql.ArgumentConfig{
+					Type:        graphql.NewList(graphql.String),
+					Description: "Return only articles with these tags.",
+				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				after, _ := p.Args["after"].(string)
-				first, _ := p.Args["first"].(int)
-				orderBy, _ := p.Args["orderBy"].(string)
-				unpublished, _ := p.Args["unpublished"].(bool)
-				return mongo.GetArticles(first, after, orderBy, unpublished, p.Context)
+				orderBy := p.Args["orderBy"].(string)
+
+				var first int
+				if val, ok := p.Args["first"].(int); ok {
+					first = val
+				}
+
+				var after string
+				if val, ok := p.Args["after"].(string); ok {
+					after = val
+				}
+
+				var unpublished bool
+				if val, ok := p.Args["unpublished"].(bool); ok {
+					unpublished = val
+				}
+
+				var tags []interface{}
+				if val, ok := p.Args["tags"].([]interface{}); ok {
+					tags = val
+				}
+
+				return mongo.GetArticles(orderBy, first, after, unpublished, tags, p.Context)
 			},
 		},
 		"article": &graphql.Field{

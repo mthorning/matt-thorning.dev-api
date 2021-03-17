@@ -43,6 +43,9 @@ var updateArticleType = graphql.NewInputObject(graphql.InputObjectConfig{
 		"title": &graphql.InputObjectFieldConfig{
 			Type: graphql.String,
 		},
+		"articleId": &graphql.InputObjectFieldConfig{
+			Type: graphql.String,
+		},
 		"published": &graphql.InputObjectFieldConfig{
 			Type: graphql.Boolean,
 		},
@@ -83,6 +86,9 @@ var articlesConnectionType = graphql.NewObject(graphql.ObjectConfig{
 				Fields: graphql.Fields{
 					"hasNextPage": &graphql.Field{
 						Type: graphql.Boolean,
+					},
+					"page": &graphql.Field{
+						Type: graphql.Int,
 					},
 				},
 			}),
