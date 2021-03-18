@@ -68,30 +68,16 @@ var articlesConnectionType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "ArticlesConnection",
 	Fields: graphql.Fields{
 		"edges": &graphql.Field{
-			Type: graphql.NewList(graphql.NewObject(graphql.ObjectConfig{
-				Name: "ArticlesEdge",
-				Fields: graphql.Fields{
-					"cursor": &graphql.Field{
-						Type: graphql.String,
-					},
-					"node": &graphql.Field{
-						Type: articleType,
-					},
-				},
-			})),
+			Type: graphql.NewList(articleType),
 		},
-		"pageInfo": &graphql.Field{
-			Type: graphql.NewObject(graphql.ObjectConfig{
-				Name: "PageInfo",
-				Fields: graphql.Fields{
-					"hasNextPage": &graphql.Field{
-						Type: graphql.Boolean,
-					},
-					"page": &graphql.Field{
-						Type: graphql.Int,
-					},
-				},
-			}),
+		"page": &graphql.Field{
+			Type: graphql.Int,
+		},
+		"total": &graphql.Field{
+			Type: graphql.Int,
+		},
+		"hasNextPage": &graphql.Field{
+			Type: graphql.Boolean,
 		},
 	},
 })

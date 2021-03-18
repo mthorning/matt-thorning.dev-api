@@ -24,13 +24,13 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 					Type:        graphql.NewNonNull(graphql.String),
 					Description: "Field to order by, prefix with ':desc' for descending order.",
 				},
-				"first": &graphql.ArgumentConfig{
+				"limit": &graphql.ArgumentConfig{
 					Type:        graphql.Int,
 					Description: "Number of articles to fetch.",
 				},
-				"after": &graphql.ArgumentConfig{
-					Type:        graphql.String,
-					Description: "Cursor from previous data set.",
+				"page": &graphql.ArgumentConfig{
+					Type:        graphql.Int,
+					Description: "Page required",
 				},
 				"unpublished": &graphql.ArgumentConfig{
 					Type:        graphql.Boolean,
@@ -44,14 +44,14 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
 				orderBy := p.Args["orderBy"].(string)
 
-				var first int
-				if val, ok := p.Args["first"].(int); ok {
-					first = val
+				var limit int
+				if val, ok := p.Args["limit"].(int); ok {
+					limit = val
 				}
 
-				var after string
-				if val, ok := p.Args["after"].(string); ok {
-					after = val
+				var page int
+				if val, ok := p.Args["page"].(int); ok {
+					page = val
 				}
 
 				var unpublished bool
@@ -64,7 +64,7 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 					tags = val
 				}
 
-				return mongo.GetArticles(orderBy, first, after, unpublished, tags, p.Context)
+				return mongo.GetArticles(orderBy, limit, page, unpublished, tags, p.Context)
 			},
 		},
 		"article": &graphql.Field{

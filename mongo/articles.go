@@ -62,72 +62,40 @@ type Article struct {
 	Tags       []string
 }
 
-type Edge struct {
-	Cursor string
-	Node   primitive.M
-}
-
-type PageInfo struct {
-	HasNextPage bool
-}
-
 type Connection struct {
-	Edges    []Edge
-	PageInfo PageInfo
+	Edges       []bson.M
+	Page        int
+	HasNextPage bool
+	Total       int64
 }
 
-// func makeCursor(orderField interface{}) {
-// 	switch orderField.(type) {
-// 	case primitive.DateTime:
-// 		fmt.Println("DateTime")
-// 	case nil:
-// 		fmt.Println("nil")
-// 	default:
-// 		fmt.Printf("something else: %T\n", orderField)
-// 	}
-
-// }
-
-func GetArticles(orderBy string, first int, after string, unpublished bool, tags []interface{}, ctx context.Context) (Connection, error) {
+func GetArticles(orderBy string, limit int, page int, unpublished bool, tags []interface{}, ctx context.Context) (Connection, error) {
 	filter := bson.D{}
-	var and []bson.D
 	findOptions := options.Find()
 
-	parts := strings.Split(orderBy, ":")
-	sortField := parts[0]
+	s := strings.Split(orderBy, ":")
+	sortField := s[0]
 	direction := 1
-	if len(parts) > 1 && parts[1] == "desc" {
+	if len(s) > 1 && s[1] == "desc" {
 		direction = -1
 	}
 
-	if after != "" {
-		afterID, err := primitive.ObjectIDFromHex(after)
-		if err != nil {
-			return Connection{}, err
-		}
-		operator := "$lt"
-		if direction == -1 {
-			operator = "$gt"
-		}
-		and = append(and, bson.D{{Key: "_id", Value: bson.D{{Key: operator, Value: afterID}}}})
-	}
-
 	if len(tags) > 0 {
-		and = append(and, bson.D{{Key: "tags", Value: bson.D{{Key: "$all", Value: tags}}}})
+		filter = append(filter, bson.E{Key: "tags", Value: bson.D{{Key: "$all", Value: tags}}})
 	}
 
 	if unpublished == false {
-		and = append(and, bson.D{{Key: "published", Value: bson.D{{Key: "$eq", Value: true}}}})
+		filter = append(filter, bson.E{Key: "published", Value: true})
 	}
 
-	if len(and) > 0 {
-		filter = append(filter, bson.E{Key: "$and", Value: and})
+	findOptions.SetSort(bson.D{{Key: sortField, Value: direction}})
+
+	if limit != 0 {
+		findOptions.SetLimit(int64(limit))
 	}
 
-	findOptions.SetSort(bson.D{{Key: sortField, Value: direction}, {Key: "_id", Value: 1}})
-
-	if first != 0 {
-		findOptions.SetLimit(int64(first))
+	if page != 0 {
+		findOptions.SetSkip(int64(page * limit))
 	}
 
 	cursor, err := db.articles.Find(ctx, filter, findOptions)
@@ -136,12 +104,12 @@ func GetArticles(orderBy string, first int, after string, unpublished bool, tags
 	}
 
 	var articles []bson.M
-	if err = cursor.All(context.TODO(), &articles); err != nil {
-		return Connection{}, err
-	}
-
-	var edges []Edge
-	for _, article := range articles {
+	defer cursor.Close(ctx)
+	for cursor.Next(ctx) {
+		var article bson.M
+		if err := cursor.Decode(&article); err != nil {
+			return Connection{}, err
+		}
 		date := article["date"].(primitive.DateTime)
 		article["date"] = primitive.DateTime.Time(date)
 
@@ -149,20 +117,24 @@ func GetArticles(orderBy string, first int, after string, unpublished bool, tags
 			article["claps"] = 0
 		}
 
-		edge := Edge{
-			Node:   article,
-			Cursor: article["_id"].(primitive.ObjectID).Hex(),
-		}
-		edges = append(edges, edge)
+		articles = append(articles, article)
+	}
+	if err := cursor.Err(); err != nil {
+		return Connection{}, err
 	}
 
-	hasNextPage := true
+	count, err := db.articles.CountDocuments(ctx, bson.D{}, nil)
+	if err != nil {
+		return Connection{}, err
+
+	}
+	hasNextPage := int64(len(articles)+(page*limit-1)) < count-1
 
 	connection := Connection{
-		Edges: edges,
-		PageInfo: PageInfo{
-			HasNextPage: hasNextPage,
-		},
+		Edges:       articles,
+		Page:        page,
+		Total:       count,
+		HasNextPage: hasNextPage,
 	}
 	return connection, nil
 }
