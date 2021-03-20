@@ -6,6 +6,14 @@ import (
 	"github.com/mthorning/mtdev/mongo"
 )
 
+func interfaceToStringSlice(input *[]interface{}) []string {
+	var output []string
+	for _, a := range *input {
+		output = append(output, a.(string))
+	}
+	return output
+}
+
 var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RootQuery",
 	Fields: graphql.Fields{
@@ -36,7 +44,7 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 					Type:        graphql.Boolean,
 					Description: "Show unpublished articles as well.",
 				},
-				"tags": &graphql.ArgumentConfig{
+				"selectedTags": &graphql.ArgumentConfig{
 					Type:        graphql.NewList(graphql.String),
 					Description: "Return only articles with these tags.",
 				},
@@ -59,12 +67,12 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 					unpublished = val
 				}
 
-				var tags []interface{}
-				if val, ok := p.Args["tags"].([]interface{}); ok {
-					tags = val
+				var selectedTags []string
+				if val, ok := p.Args["selectedTags"].([]interface{}); ok {
+					selectedTags = interfaceToStringSlice(&val)
 				}
 
-				return mongo.GetArticles(orderBy, limit, page, unpublished, tags, p.Context)
+				return mongo.GetArticles(orderBy, limit, page, unpublished, &selectedTags, p.Context)
 			},
 		},
 		"article": &graphql.Field{
@@ -83,8 +91,19 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 		"tags": &graphql.Field{
 			Type:        graphql.NewList(tagType),
 			Description: "Get a list of available tags.",
+			Args: graphql.FieldConfigArgument{
+				"selectedTags": &graphql.ArgumentConfig{
+					Type:        graphql.NewList(graphql.String),
+					Description: "Filter out these tags",
+				},
+			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				return firebase.GetTags(p.Context)
+				var selectedTags []string
+				if val, ok := p.Args["selectedTags"].([]interface{}); ok {
+					selectedTags = interfaceToStringSlice(&val)
+				}
+
+				return mongo.GetTags(&selectedTags, p.Context)
 			},
 		},
 	},

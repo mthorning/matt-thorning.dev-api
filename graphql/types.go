@@ -88,8 +88,8 @@ var tagType = graphql.NewObject(graphql.ObjectConfig{
 		"name": &graphql.Field{
 			Type: graphql.String,
 		},
-		"articles": &graphql.Field{
-			Type: graphql.NewList(graphql.String),
+		"articleCount": &graphql.Field{
+			Type: graphql.Int,
 		},
 	},
 })

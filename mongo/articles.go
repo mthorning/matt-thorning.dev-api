@@ -44,24 +44,6 @@ func seedClaps(ctx context.Context) {
 
 }
 
-func toStringSlice(slice []interface{}) []string {
-	var stringSlice []string
-	for _, t := range slice {
-		stringSlice = append(stringSlice, t.(string))
-	}
-	return stringSlice
-}
-
-type Article struct {
-	Slug       string
-	Published  bool
-	Date       time.Time
-	Title      string
-	Excerpt    string
-	TimeToRead int
-	Tags       []string
-}
-
 type Connection struct {
 	Edges       []bson.M
 	Page        int
@@ -69,7 +51,7 @@ type Connection struct {
 	Total       int64
 }
 
-func GetArticles(orderBy string, limit int, page int, unpublished bool, tags []interface{}, ctx context.Context) (Connection, error) {
+func GetArticles(orderBy string, limit int, page int, unpublished bool, tags *[]string, ctx context.Context) (Connection, error) {
 	filter := bson.D{}
 	findOptions := options.Find()
 
@@ -80,7 +62,7 @@ func GetArticles(orderBy string, limit int, page int, unpublished bool, tags []i
 		direction = -1
 	}
 
-	if len(tags) > 0 {
+	if len(*tags) > 0 {
 		filter = append(filter, bson.E{Key: "tags", Value: bson.D{{Key: "$all", Value: tags}}})
 	}
 
@@ -88,7 +70,7 @@ func GetArticles(orderBy string, limit int, page int, unpublished bool, tags []i
 		filter = append(filter, bson.E{Key: "published", Value: true})
 	}
 
-	findOptions.SetSort(bson.D{{Key: sortField, Value: direction}})
+	findOptions.SetSort(bson.D{{Key: sortField, Value: direction}, {Key: "_id", Value: direction}})
 
 	if limit != 0 {
 		findOptions.SetLimit(int64(limit))
