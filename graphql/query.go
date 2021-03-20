@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"github.com/graphql-go/graphql"
-	"github.com/mthorning/mtdev/firebase"
 	"github.com/mthorning/mtdev/mongo"
 )
 
@@ -75,17 +74,17 @@ var rootQuery = graphql.NewObject(graphql.ObjectConfig{
 				return mongo.GetArticles(orderBy, limit, page, unpublished, &selectedTags, p.Context)
 			},
 		},
-		"article": &graphql.Field{
-			Type:        articleType,
-			Description: "Get a single Article by ID.",
+		"claps": &graphql.Field{
+			Type:        graphql.Int,
+			Description: "Get claps for a single article by ID.",
 			Args: graphql.FieldConfigArgument{
-				"id": &graphql.ArgumentConfig{
+				"articleId": &graphql.ArgumentConfig{
 					Type: graphql.NewNonNull(graphql.ID),
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				id, _ := p.Args["id"].(string)
-				return firebase.GetArticle(id, p.Context)
+				articleId, _ := p.Args["articleId"].(string)
+				return mongo.GetClaps(articleId, p.Context)
 			},
 		},
 		"tags": &graphql.Field{

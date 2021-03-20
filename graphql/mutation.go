@@ -5,7 +5,6 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/mthorning/mtdev/auth"
 	"github.com/mthorning/mtdev/config"
-	"github.com/mthorning/mtdev/firebase"
 	"github.com/mthorning/mtdev/mongo"
 )
 
@@ -23,28 +22,28 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 	Name: "RootMutation",
 	Fields: graphql.Fields{
 		"addClaps": &graphql.Field{
-			Type:        articleType,
+			Type:        graphql.Int,
 			Description: fmt.Sprintf("Add new claps to an Article. Limited to %d", conf.MaxClaps),
 			Args: graphql.FieldConfigArgument{
 				"articleId": &graphql.ArgumentConfig{
-					Type: graphql.NewNonNull(graphql.String),
+					Type: graphql.NewNonNull(graphql.ID),
 				},
 				"claps": &graphql.ArgumentConfig{
 					Type: graphql.NewNonNull(graphql.Int),
 				},
 			},
 			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
-				id, _ := p.Args["id"].(string)
-				claps, _ := p.Args["claps"].(int)
+				articleId := p.Args["articleId"].(string)
+				claps := p.Args["claps"].(int)
 				if claps > conf.MaxClaps {
 					claps = conf.MaxClaps
 				}
-				return firebase.AddClaps(id, claps, p.Context)
+				return mongo.AddClaps(articleId, claps, p.Context)
 			},
 		},
 		"updateArticles": &graphql.Field{
 			Type:        graphql.String,
-			Description: fmt.Sprintf("Update the fields on an article", conf.MaxClaps),
+			Description: "Update the fields on an article.",
 			Args: graphql.FieldConfigArgument{
 				"data": &graphql.ArgumentConfig{
 					Type: graphql.NewNonNull(graphql.NewList(updateArticleType)),
@@ -58,6 +57,17 @@ var rootMutation = graphql.NewObject(graphql.ObjectConfig{
 				data, _ := p.Args["data"].([]interface{})
 				article, err := mongo.UpdateArticles(data, p.Context)
 				return article, err
+			},
+		},
+		"seedClaps": &graphql.Field{
+			Type:        graphql.String,
+			Description: "Sync claps from the Firebase DB.",
+			Resolve: func(p graphql.ResolveParams) (interface{}, error) {
+				authHeader := p.Context.Value("authHeader")
+				if err := auth.Authenticate(fmt.Sprintf("%v", authHeader)); err != nil {
+					return "", err
+				}
+				return mongo.SeedClaps(p.Context)
 			},
 		},
 	},
