@@ -1,4 +1,4 @@
-package claps
+package legacy
 
 import (
 	"fmt"

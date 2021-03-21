@@ -1,0 +1,21 @@
+version: '2'
+services:
+  api:
+    image: mtdev-api-image
+    container_name: mtdev-api
+    restart: always
+    environment:
+        MTD_UI_USERNAME: ${MTD_UI_USERNAME}
+        MTD_UI_PASSWORD: ${MTD_UI_PASSWORD}
+        MTD_FIREBASE_PROJECT_ID: ${MTD_FIREBASE_PROJECT_ID}
+    ports:
+      - '8001:8001'
+    depends_on:
+      - dkkb
+  db:
+    image: mongo
+    restart: always
+    container_name: ${MTD_DATABASE_HOST}
+    volumes:
+      - ./data:/data/db
+

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/mthorning/mtdev/claps"
+	"github.com/mthorning/mtdev/legacy"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -20,7 +20,7 @@ func getClapsField(ctx context.Context) string {
 
 //temp function to pull in data from the old realtime db
 func SeedClaps(ctx context.Context) (string, error) {
-	currentClaps, err := claps.GetClaps(fmt.Sprintf("claps"))
+	currentClaps, err := legacy.GetClaps(fmt.Sprintf("claps"))
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +54,7 @@ func GetClaps(articleId string, ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	claps := result[clapsField].(int32)
+	claps := result[clapsField].(int64)
 	return int(claps), nil
 }
 

@@ -1,0 +1,54 @@
+name: Release
+
+env:
+  MTD_UI_USERNAME: ${{ MTD_UI_USERNAME }}
+  MTD_UI_PASSWORD: ${{ MTD_UI_PASSWORD  }}
+  MTD_FIREBASE_PROJECT_ID: ${{ MTD_FIREBASE_PROJECT_ID  }}
+  MTD_DATABASE_HOST: ${{ MTD_DATABASE_HOST  }}
+  APP_NAME: ${{ APP_NAME  }}
+
+on: workflow_dispatch:
+    
+  deploy-api:
+    name: Deploy API
+    if: github.event.inputs.with-api == 'y'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api 
+    steps:
+      - uses: actions/checkout@v2
+      - name: build docker image
+        run: |
+          docker build --tag mtdev-api-image .
+          docker save -o image-api.tar mtdev-api-image
+      - name: copy image to server
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          port: 22
+          key: ${{ secrets.SSH_KEY }}
+          source: image-api.tar
+          target: ~/containers/${{ env.APP_NAME }}
+            
+  api-up:
+    name: API Up
+    needs: [deploy-api]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: load images and up
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          port: 22
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd ~/containers/${{ env.APP_NAME }}
+            docker load -i image-api.tar
+            docker-compose up -d
+            rm image-api.tar
+            docker system prune -f
+
