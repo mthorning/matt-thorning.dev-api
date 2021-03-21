@@ -9,6 +9,7 @@ env:
 
 on: workflow_dispatch
     
+jobs:
   deploy-api:
     name: Deploy API
     if: github.event.inputs.with-api == 'y'
