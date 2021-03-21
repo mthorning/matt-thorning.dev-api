@@ -7,7 +7,7 @@ env:
   MTD_DATABASE_HOST: ${{ MTD_DATABASE_HOST  }}
   APP_NAME: ${{ APP_NAME  }}
 
-on: workflow_dispatch:
+on: workflow_dispatch
     
   deploy-api:
     name: Deploy API
