@@ -1,12 +1,5 @@
 name: Release
 
-env:
-  MTD_UI_USERNAME: ${{ secrets.MTD_UI_USERNAME }}
-  MTD_UI_PASSWORD: ${{ secrets.MTD_UI_PASSWORD  }}
-  MTD_FIREBASE_PROJECT_ID: ${{ secrets.MTD_FIREBASE_PROJECT_ID  }}
-  MTD_DATABASE_HOST: ${{ secrets.MTD_DATABASE_HOST  }}
-  APP_NAME: ${{ secrets.APP_NAME  }}
-
 on: workflow_dispatch
     
 jobs:
