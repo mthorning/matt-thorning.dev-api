@@ -20,7 +20,7 @@ jobs:
           port: 22
           key: ${{ secrets.SSH_KEY }}
           source: image-api.tar
-          target: ~/containers/${{ env.APP_NAME }}
+          target: ~/containers/mtdev-api
             
   api-up:
     name: API Up
