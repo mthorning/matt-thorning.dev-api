@@ -36,9 +36,9 @@ jobs:
           port: 22
           key: ${{ secrets.SSH_KEY }}
           script: |
-            cd ~/containers/${{ env.APP_NAME }}
+            cd ~/containers/mtdev-api
             docker load -i image-api.tar
             docker-compose up -d
-
+            rm image-api.tar
             docker system prune -f
 
