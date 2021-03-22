@@ -39,6 +39,6 @@ jobs:
             cd ~/containers/${{ env.APP_NAME }}
             docker load -i image-api.tar
             docker-compose up -d
-            rm image-api.tar
+
             docker system prune -f
 
