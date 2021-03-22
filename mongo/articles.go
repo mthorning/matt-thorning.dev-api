@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -61,6 +62,7 @@ func GetArticles(orderBy string, limit int, page int, unpublished bool, tags *[]
 		article["date"] = primitive.DateTime.Time(date)
 
 		clapsField := getClapsField(ctx)
+		fmt.Println(clapsField)
 		article["claps"] = article[clapsField]
 		if article["claps"] == nil {
 			article["claps"] = 0
