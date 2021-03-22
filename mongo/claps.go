@@ -54,13 +54,13 @@ func GetClaps(articleId string, ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	claps := result[clapsField].(int64)
+	claps := result[clapsField].(int32)
 	return int(claps), nil
 }
 
 func AddClaps(articleId string, claps int, ctx context.Context) (int, error) {
 	clapsField := getClapsField(ctx)
-	_, err := db.articles.UpdateOne(ctx, bson.M{"articleId": articleId}, bson.M{"$inc": bson.M{clapsField: claps}})
+	_, err := db.articles.UpdateOne(ctx, bson.M{"articleId": articleId}, bson.M{"$inc": bson.M{clapsField: int32(claps)}})
 	if err != nil {
 		return 0, err
 	}
