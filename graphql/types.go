@@ -7,6 +7,9 @@ import (
 var articleType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Article",
 	Fields: graphql.Fields{
+		"articleId": &graphql.Field{
+			Type: graphql.ID,
+		},
 		"claps": &graphql.Field{
 			Type: graphql.Int,
 		},

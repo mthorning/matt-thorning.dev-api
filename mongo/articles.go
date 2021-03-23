@@ -62,7 +62,6 @@ func GetArticles(orderBy string, limit int, page int, unpublished bool, tags *[]
 		article["date"] = primitive.DateTime.Time(date)
 
 		clapsField := getClapsField(ctx)
-		fmt.Println(clapsField)
 		article["claps"] = article[clapsField]
 		if article["claps"] == nil {
 			article["claps"] = 0
