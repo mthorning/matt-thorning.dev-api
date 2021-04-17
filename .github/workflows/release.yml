@@ -40,5 +40,5 @@ jobs:
             docker load -i image-api.tar
             docker-compose up -d
             rm image-api.tar
-            docker system prune -f
+            docker system prune --all --volumes --force
 
